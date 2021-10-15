@@ -136,6 +136,8 @@ def bitSwitch(i):
             else:
                 i[j] = 0
 
+def update():
+    population = newPopulation
 
 
 def run(generations):
@@ -149,8 +151,8 @@ def run(generations):
         selection()
         crossover()
         mutation()
+        update()
 
-        population = newPopulation
         f = totalFitness()
 
     return f
@@ -159,4 +161,4 @@ def run(generations):
 
 if __name__ == '__main__':
 
-
+    run(50)
