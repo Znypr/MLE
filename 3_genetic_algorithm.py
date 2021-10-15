@@ -153,7 +153,7 @@ def run(generations):
         mutation()
         update()
 
-        f = totalFitness()
+        #f = totalFitness()
 
     return f
 
