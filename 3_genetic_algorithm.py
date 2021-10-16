@@ -1,184 +1,198 @@
 # author: Candra Mulyadhi (1920996)
-# date: 11/10/2021
+# date: 16/10/2021
 
-# fitness:
+# Running this experiment with a target volume of 100l resulted in too low fitnesses.
+# Therefore I adjusted the volume, as well as the constant c.
 #
+# The tests have shown a negative correlation between an increase of the mutation rate
+# and better results when the crossover rate is between 0.2 and 0.6
 
 
 import random
 import copy
 import math
 
-V = 100
-l = 100
-p = 10
 
-c = 0.001
-r = 0.8
-m = 0.3
+# setup
+
+volume = 150
+amount_genes = 100
+amount_individuals = 10
+
+c = 0.0001
+crossover_rate = 0.6
+mutation_rate = 0
 
 list = []
 population = []
-newPopulation = []
+new_population = []
 
 
+# initializers
 
-def setList():
-    for x in range(l):
-        list.append(generateRandomVolume())
+def set_list():
+    global list
+    list = []
+    for x in range(amount_genes):
+        list.append(create_random_volume())
 
-def setPopulation():
-    for i in range(p):
-        population.append(createHypothesis())
+def set_population():
+    global population
+    population = []
+    for i in range(amount_individuals):
+        population.append(create_hypothesis())
 
-def createHypothesis():
+def create_hypothesis():
     hypothesis = []
 
-    for i in range(l):
+    for i in range(amount_genes):
         bit = random.randrange(0, 2)
         hypothesis.append(bit)
 
     return hypothesis
 
-def generateRandomVolume():
+def create_random_volume():
     return random.uniform(1,10)
 
 
+# helpers
 
-def selectHypothesis():
+def select_hypothesis():
     randNum = random.random()
     sum = 0
-    idx = random.randrange(0, p)
+    idx = random.randrange(0, amount_individuals)
 
     while sum < randNum:
         idx = idx + 1
-        idx = idx % p
+        idx = idx % amount_individuals
         sum = sum + pr(idx)
 
     return idx
 
 def pr(i):
-    return fitness(i) / totalFitness()
+    return fitness(i) / total_fitness()
 
 def fitness(i):
-    w = getWeight(i)
+    w = get_weight(i)
 
-    return math.e ** (-c * ((V - w) ** 2))
+    return math.e ** (-c * ((volume - w) ** 2))
 
-def totalFitness():
+def total_fitness():
     f = 0
 
-    for j in range(p):
+    for j in range(amount_individuals):
         f += fitness(j)
     return f
 
-def maxFitness():
+def max_fitness():
 
     max = 0
 
-    for i in range(p):
+    for i in range(amount_individuals):
         f = fitness(i)
         if f > max:
             max = f
     return max
 
-def getWeight(i):
+def get_weight(i):
 
     w = 0
 
-    for j in range(l):
+    for j in range(amount_genes):
         if population[i][j] == 1:
             w += list[j]
 
     return w
 
-def getWeights():
+def get_weights():
 
     w = []
-    for i in range(p):
-        w.append(round(getWeight(i)))
+    for i in range(amount_individuals):
+        w.append(round(get_weight(i)))
 
-    return w
+    return sorted(w)
 
 
+# genetics
 
 def selection():
-    x = round((1-r)*p)
-    for i in range(x):
-        selectedIndividual = population[selectHypothesis()]
-        newPopulation.append(selectedIndividual)
+    amount_selections = round((1 - crossover_rate) * amount_individuals)
+    for i in range(amount_selections):
+        selectedIndividual = population[select_hypothesis()]
+        new_population.append(selectedIndividual)
 
 def crossover():
-    x = round(r*p/2)
-    for i in range(x):
+    amount_crossovers = round(crossover_rate * amount_individuals / 2)
+    for i in range(amount_crossovers):
 
-        randIdx = selectHypothesis()
-        crossoverPoint = random.randrange(0, l)
-
+        crossoverpoint = random.randrange(0, amount_genes)
+        randIdx = select_hypothesis()
         h1 = population[randIdx]
-        h2 = population[(randIdx + 1) % p]
-        c1 = copy.copy(h1)
+        h2 = population[(randIdx+1) % amount_individuals]
 
-        for idx in range(crossoverPoint):
-            h1[idx] = h2[idx]
-            h2[idx] = c1[idx]
+        h1[:crossoverpoint], h2[:crossoverpoint] = h2[:crossoverpoint], h1[:crossoverpoint]
 
-        newPopulation.append(h1)
-        newPopulation.append(h2)
+        new_population.append(h1)
+        new_population.append(h2)
 
 def mutation():
-    x = round(m*p)
-    for i in range(x):
-        randIdx = random.randrange(0, len(newPopulation))
-        bitSwitch(newPopulation[randIdx])
+    amount_mutations = round(mutation_rate * amount_individuals)
+    for i in range(amount_mutations):
+        random_individual = random.randrange(0, amount_individuals)
+        mutate_gene(random_individual)
 
-def bitSwitch(i):
-    randIdx = random.randrange(0, l)
+def mutate_gene(i):
+    random_gene = random.randrange(0, amount_genes)
 
-    if i[randIdx] == 0:
-        i[randIdx] = 1
+    if new_population[i][random_gene] == 0:
+        new_population[i][random_gene] = 1
     else:
-        i[randIdx] = 0
+        new_population[i][random_gene] = 0
 
 def update():
 
-    global newPopulation
+    global new_population
     global population
 
-    population = newPopulation
-    newPopulation = []
+    population = new_population
+    new_population = []
 
-def runWithGenerations(generations):
+def fitness_distribution():
+    fit = []
+    for j in range(amount_individuals):
+        fit.append(round(fitness(j),2))
+    return fit
 
-    setList()
-    setPopulation()
-    f = maxFitness()
-    start = f
-    g = 0
+
+# main loops
+
+def run_with_generations(generations):
+
+    set_list()
+    set_population()
+    average_fitness = total_fitness() / amount_individuals
+    start = average_fitness
 
     for generation in range(generations):
-        g = g + 1
         selection()
         crossover()
         mutation()
 
         update()
-        w = getWeights()
 
-        f = maxFitness()
-        print("Generation: ", g, "\nFitness: ", f, "\n")
+        average_fitness = total_fitness() / amount_individuals
 
-    print("Delta: ", f - start)
+    return start, average_fitness
 
-def runWithTreshold(treshold):
+def run_with_threshold(threshold):
 
-    setList()
-    setPopulation()
-    f = maxFitness()
+    set_list()
+    set_population()
+    f = max_fitness()
     start = f
     g = 0
 
-    while f < treshold:
+    while f < threshold:
         g = g + 1
         selection()
         crossover()
@@ -186,7 +200,7 @@ def runWithTreshold(treshold):
 
         update()
 
-        f = maxFitness()
+        f = max_fitness()
         print("Generation: ", g, "\nFitness: ", f, "\n")
 
     print("Delta: ", f - start)
@@ -194,12 +208,86 @@ def runWithTreshold(treshold):
 def run(input):
 
     if input < 1:
-        runWithTreshold(input)
+        return(run_with_threshold(input))
     else:
-        runWithGenerations(input)
+        return(run_with_generations(input))
+
+
+# execution
+
+def handle_delta(delta):
+
+    if delta >= 0:
+        print("  +"+ str(round(delta * 100, 2)) + "%")
+    else:
+        print("  "+ str(round(delta * 100, 2)) + "%")
+    print()
+
+def print_setup():
+
+    print()
+    print("Volume Target: ", volume)
+    print("Amount of Individuals: ", amount_individuals)
+    print("Genes per Genome: ", amount_genes)
+    print("Constant C: ", c)
+    print()
+
+def test_setup(i, g, m, c):
+
+    global mutation_rate
+    global crossover_rate
+
+    avg_start = 0
+    avg_end = 0
+    mutation_rate = m
+    crossover_rate = c
+
+    for i in range(i):
+        start_fitness, end_fitness = run(g)
+        avg_start += start_fitness
+        avg_end += end_fitness
+
+    start = avg_start/i
+    end = avg_end/i
+
+    print("Mutationrate: ", m, "| Crossoverrate: ", c)
+    print("Average Fitness:")
+    print("  Start: ", round(start,3), "| End: ", round(end, 3))
+    handle_delta(end-start)
+
+def run_test(i, g):
+
+    # this function runs the genetic cycle g times. (g := generations) => 1 lifecycle
+    # each lifecycle is repeated i times (i := iterations) and returns an average improvement in percent (delta)
+
+    print_setup()
+    print("--MUTATIONS--")
+    test_setup(i, g, 0, 0)
+    test_setup(i, g, 0.5, 0)
+    test_setup(i, g, 1, 0)
+
+    print("--CROSSOVER--")
+    test_setup(i, g, 0, 0.2)
+    test_setup(i, g, 0, 0.4)
+    test_setup(i, g, 0, 0.6)
+    test_setup(i, g, 0, 0.8)
+    test_setup(i, g, 0, 1)
+
+def run_normal(input):
+
+    print_setup()
+
+    start, end = run(input)
+    print("Mutationrate: ", mutation_rate, "| Crossoverrate: ", crossover_rate, "\n")
+    print("Average Fitness:")
+    print("  Start: ", round(start,5), "\n  End: ", round(end,5))
+    handle_delta(end-start)
 
 
 
 if __name__ == '__main__':
 
-    run(100)
+    #run_normal(50)
+    run_test(10, 50)
+
+
