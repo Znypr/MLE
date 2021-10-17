@@ -15,13 +15,13 @@ import math
 
 # setup
 
-volume = 150
+volume = 100
 amount_genes = 100
 amount_individuals = 10
 
-c = 0.0001
-crossover_rate = 0.6
-mutation_rate = 0
+c = 0.00015
+crossover_rate = 0.8
+mutation_rate = 0.3
 
 list = []
 population = []
@@ -74,14 +74,15 @@ def pr(i):
 
 def fitness(i):
     w = get_weight(i)
-
     return math.e ** (-c * ((volume - w) ** 2))
+
 
 def total_fitness():
     f = 0
 
     for j in range(amount_individuals):
         f += fitness(j)
+
     return f
 
 def max_fitness():
@@ -110,7 +111,7 @@ def get_weights():
     for i in range(amount_individuals):
         w.append(round(get_weight(i)))
 
-    return sorted(w)
+    return w
 
 
 # genetics
@@ -118,7 +119,7 @@ def get_weights():
 def selection():
     amount_selections = round((1 - crossover_rate) * amount_individuals)
     for i in range(amount_selections):
-        selectedIndividual = population[select_hypothesis()]
+        selectedIndividual = population[select_hypothesis()].copy()
         new_population.append(selectedIndividual)
 
 def crossover():
@@ -127,8 +128,8 @@ def crossover():
 
         crossoverpoint = random.randrange(0, amount_genes)
         randIdx = select_hypothesis()
-        h1 = population[randIdx]
-        h2 = population[(randIdx+1) % amount_individuals]
+        h1 = population[randIdx].copy()
+        h2 = population[(randIdx+1) % amount_individuals].copy()
 
         h1[:crossoverpoint], h2[:crossoverpoint] = h2[:crossoverpoint], h1[:crossoverpoint]
 
@@ -154,7 +155,7 @@ def update():
     global new_population
     global population
 
-    population = new_population
+    population = new_population.copy()
     new_population = []
 
 def fitness_distribution():
@@ -170,6 +171,7 @@ def run_with_generations(generations):
 
     set_list()
     set_population()
+    w = get_weights()
     average_fitness = total_fitness() / amount_individuals
     start = average_fitness
 
@@ -179,10 +181,10 @@ def run_with_generations(generations):
         mutation()
 
         update()
-
+        w = get_weights()
         average_fitness = total_fitness() / amount_individuals
 
-    return start, average_fitness
+    return start, average_fitness, sorted(get_weights(), reverse=True)[0]
 
 def run_with_threshold(threshold):
 
@@ -277,17 +279,20 @@ def run_normal(input):
 
     print_setup()
 
-    start, end = run(input)
+    start, end, fittest = run(input)
     print("Mutationrate: ", mutation_rate, "| Crossoverrate: ", crossover_rate, "\n")
     print("Average Fitness:")
     print("  Start: ", round(start,5), "\n  End: ", round(end,5))
     handle_delta(end-start)
+    print("Fittest: ", fittest, "l")
 
 
 
 if __name__ == '__main__':
 
-    #run_normal(50)
-    run_test(10, 50)
+    run_normal(50)
+    #run_test(10, 50)
+
+
 
 
