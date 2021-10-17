@@ -1,12 +1,20 @@
 # author: Candra Mulyadhi (1920996)
-# date: 16/10/2021
+# date: 17/10/2021
 
-# Running this experiment with a target volume of 100l resulted in too low fitnesses.
-# Therefore I adjusted the volume, as well as the constant c.
-#
-# The tests have shown a negative correlation between an increase of the mutation rate
-# and better results when the crossover rate is between 0.2 and 0.6
 
+# The population size has a great influence, of how fast the genomes of
+# all the individuals will be identical within a certain span of generations.
+# Therefore I increased the amount to 25.
+# Note: increasing the population size exponentially increases the runtime
+
+# the constant c has been chosen by comparing fitness-functions and choosing
+# the most fitting one
+# the crossover- and mutationrate have been chosen by testing resulting in on average
+# on average better results
+
+
+# for testing purposes a function 'run_tests(iterations, generations)' has been implemented
+# to deliver results with various rates.
 
 import random
 import copy
@@ -17,10 +25,10 @@ import math
 
 volume = 100
 amount_genes = 100
-amount_individuals = 10
+amount_individuals = 25
 
-c = 0.00015
-crossover_rate = 0.8
+c = 0.0002
+crossover_rate = 0.6
 mutation_rate = 0.3
 
 list = []
@@ -219,6 +227,7 @@ def run(input):
 
 def handle_delta(delta):
 
+    print("\nOverall improvement:")
     if delta >= 0:
         print("  +"+ str(round(delta * 100, 2)) + "%")
     else:
@@ -239,13 +248,14 @@ def test_setup(i, g, m, c):
     global mutation_rate
     global crossover_rate
 
+    weight_distribution = []
     avg_start = 0
     avg_end = 0
     mutation_rate = m
     crossover_rate = c
 
     for i in range(i):
-        start_fitness, end_fitness = run(g)
+        start_fitness, end_fitness, w = run(g)
         avg_start += start_fitness
         avg_end += end_fitness
 
@@ -275,16 +285,16 @@ def run_test(i, g):
     test_setup(i, g, 0, 0.8)
     test_setup(i, g, 0, 1)
 
-def run_normal(input):
+def run_normal(g):
 
     print_setup()
 
-    start, end, fittest = run(input)
+    start, end, fittest = run(g)
     print("Mutationrate: ", mutation_rate, "| Crossoverrate: ", crossover_rate, "\n")
-    print("Average Fitness:")
+    print("Average Fitness within", g, "generations: ")
     print("  Start: ", round(start,5), "\n  End: ", round(end,5))
     handle_delta(end-start)
-    print("Fittest: ", fittest, "l")
+    print("fittest individual:", fittest, "l")
 
 
 
@@ -292,7 +302,3 @@ if __name__ == '__main__':
 
     run_normal(50)
     #run_test(10, 50)
-
-
-
-
