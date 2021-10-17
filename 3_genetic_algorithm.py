@@ -292,7 +292,7 @@ def run_normal(g):
     start, end, fittest = run(g)
     print("Mutationrate: ", mutation_rate, "| Crossoverrate: ", crossover_rate, "\n")
     print("Average Fitness within", g, "generations: ")
-    print("  Start: ", round(start,5), "\n  End: ", round(end,5))
+    print("  Start: ", round(start,5), "\n  End:   ", round(end,5))
     handle_delta(end-start)
     print("fittest individual:", fittest, "l")
 
