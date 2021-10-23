@@ -1,6 +1,5 @@
 import sys
 import time
-import math
 
 try:
     import numpy as np
@@ -49,18 +48,27 @@ class GameGL(object):
 
 
 class BasicGame(GameGL):
+
     windowName = "PingPong"
-    # 30px
     pixelSize = 30
 
-    xBall = 5
-    yBall = 6
-    xSchlaeger = 5
+    xMatrix = 5
+    yMatrix = 5
+
+    xBall = xMatrix//2+1
+    yBall = yMatrix//2
+
+    xPlayer = xMatrix//2
+    wPlayer = 3
+
     xV = 1
     yV = 1
+
     score = 0
 
-    def __init__(self, name, width=360, height=360):
+
+
+    def __init__(self, name, width=pixelSize*(2+xMatrix), height=pixelSize*(2+yMatrix)):
         super
         self.windowName = name
         self.width = width
@@ -69,6 +77,7 @@ class BasicGame(GameGL):
     def keyboard(self, key, x, y):
         # ESC = \x1w
         if key == b'\x1b':
+            glutLeaveMainLoop()
             sys.exit(0)
 
     def display(self):
@@ -85,38 +94,41 @@ class BasicGame(GameGL):
 
         action = 2.0 * np.random.random() - 1.0
         if action < -0.3:
-            self.xSchlaeger -= 1
+            self.xPlayer -= 1
         if action > 0.3:
-            self.xSchlaeger += 1
-        # don't allow puncher to leave the pitch
-        if self.xSchlaeger < 0:
-            self.xSchlaeger = 0
-        if self.xSchlaeger > 9:
-            self.xSchlaeger = 9
+            self.xPlayer += 1
 
+        # limit players reach
+        if self.xPlayer < 0:
+            self.xPlayer = 0
+        if self.xPlayer > self.xMatrix-1:
+            self.xPlayer = self.xMatrix-1
+
+        # update ball coordinates
         self.xBall += self.xV
         self.yBall += self.yV
-        # change direction of ball if it's at wall
-        if (self.xBall > 10 or self.xBall < 1):
+
+        # bounce ball on wall
+        if (self.xBall > self.xMatrix or self.xBall < 1):
             self.xV = -self.xV
-        if (self.yBall > 10 or self.yBall < 1):
+        if (self.yBall > self.yMatrix or self.yBall < 1):
             self.yV = -self.yV
+
         # check whether ball on bottom line
         if self.yBall == 0:
-            # check whther ball is at position of player
-            if (self.xSchlaeger == self.xBall
-                    or self.xSchlaeger == self.xBall - 1
-                    or self.xSchlaeger == self.xBall - 2):
+            # player-ball collision
+            if (self.xPlayer == self.xBall
+                    or self.xPlayer == self.xBall - 1
+                    or self.xPlayer == self.xBall - 2):
                 print("positive reward")
             else:
                 print("negative reward")
 
-        # repaint
         self.drawBall()
-        self.drawComputer()
+        self.drawPlayer()
 
-        # timeout of 100 milliseconds
-        time.sleep(0.1)
+        # adaptive speed depending on matrix size
+        time.sleep(0.8/((self.xMatrix+self.yMatrix)/2))
 
         glutSwapBuffers()
 
@@ -141,7 +153,7 @@ class BasicGame(GameGL):
         self.width = width
         self.height = height
 
-    def drawBall(self, width=1, height=1, x=5, y=6, color=(0.0, 1.0, 0.0)):
+    def drawBall(self, width=1, height=1, x=xBall, y=yBall, color=(0.0, 1.0, 0.0)):
         x = self.xBall
         y = self.yBall
         xPos = x * self.pixelSize
@@ -160,8 +172,8 @@ class BasicGame(GameGL):
         glVertex2f(xPos, yPos + (self.pixelSize * height))
         glEnd()
 
-    def drawComputer(self, width=3, height=1, x=0, y=0, color=(1.0, 0.0, 0.0)):
-        x = self.xSchlaeger
+    def drawPlayer(self, width=wPlayer, height=1, x=0, y=0, color=(1.0, 0.0, 0.0)):
+        x = self.xPlayer
         xPos = x * self.pixelSize
         # set a bit away from bottom
         yPos = y * self.pixelSize  # + (self.pixelSize * height / 2)
