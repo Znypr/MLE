@@ -49,17 +49,19 @@ class GameGL(object):
 
 class BasicGame(GameGL):
 
+
     windowName = "PingPong"
     pixelSize = 30
 
     xMatrix = 5
     yMatrix = 5
 
-    xBall = xMatrix//2+1
+    xBall = xMatrix//2
     yBall = yMatrix//2
 
+
     xPlayer = xMatrix//2
-    wPlayer = 3
+    wPlayer = 2
 
     xV = 1
     yV = 1
@@ -67,8 +69,42 @@ class BasicGame(GameGL):
     score = 0
 
 
+    def simulateBallMovement(self, x, y, xV, yV):
 
-    def __init__(self, name, width=pixelSize*(2+xMatrix), height=pixelSize*(2+yMatrix)):
+        x += xV
+        y += yV
+
+        if (x >= self.xMatrix-1 or x < 1):
+            xV = -xV
+        if (y >= self.yMatrix-1 or y < 1):
+            yV = -yV
+
+        return x,y, xV, yV
+
+    def calculateProjection(self):
+
+        x, y = self.xBall, self.yBall
+        xV, yV = self.xV, self.yV
+
+        while y > 1:
+            x, y, xV, yV = self.simulateBallMovement(x, y, xV, yV)
+
+        return x
+
+    def getRewards(self, projectedTarget):
+
+        rewards = np.ones((self.xMatrix - self.wPlayer + 1,), dtype=int) * -1
+
+        for i in range(self.wPlayer):
+            if projectedTarget < len(rewards) and projectedTarget >= 0:
+                rewards[projectedTarget] = 1
+
+            projectedTarget = projectedTarget - 1
+        return rewards
+
+
+
+    def __init__(self, name, width=pixelSize*xMatrix, height=pixelSize*yMatrix):
         super
         self.windowName = name
         self.width = width
@@ -79,6 +115,72 @@ class BasicGame(GameGL):
         if key == b'\x1b':
             glutLeaveMainLoop()
             sys.exit(0)
+
+
+
+    def movePlayer(self):
+
+        action = 2.0 * np.random.random() - 1.0
+        if action < -0.3:
+            self.xPlayer -= 1
+        if action > 0.3:
+            self.xPlayer += 1
+
+    def limitPlayerReach(self):
+        # limit players reach
+        if self.xPlayer < 0:
+            self.xPlayer = 0
+        if self.xPlayer+self.wPlayer > self.xMatrix:
+            self.xPlayer = self.xMatrix-self.wPlayer
+
+
+    def moveBall(self):
+        self.xBall += self.xV
+        self.yBall += self.yV
+
+    def bounceBall(self):
+        if (self.xBall >= self.xMatrix-1 or self.xBall < 1):
+            self.xV = -self.xV
+        if (self.yBall >= self.yMatrix-1 or self.yBall < 1):
+            self.yV = -self.yV
+
+    def handleCollision(self, rewards):
+        # check whether ball on bottom line
+        if self.yBall == 1 and self.yV == -1:
+            self.score += rewards[self.xPlayer]
+            # player-ball collision
+            if self.xBall >= self.xPlayer-1 and self.xBall <= self.xPlayer + self.wPlayer:
+                # bounce ball on player
+                self.yV = -self.yV
+                print("HIT > ", self.score)
+            else:
+                print("MISS > ", self.score)
+
+            print(rewards)
+
+
+    def run(self):
+
+        self.display()
+
+        rewards = self.getRewards(self.calculateProjection())
+
+        self.movePlayer()
+        self.limitPlayerReach()
+
+        self.moveBall()
+        self.bounceBall()
+
+        self.handleCollision(rewards)
+
+
+        self.drawBall()
+        self.drawPlayer()
+
+        # adaptive speed depending on matrix size
+        time.sleep(1/((self.xMatrix+self.yMatrix)))
+
+        glutSwapBuffers()
 
     def display(self):
         # clear the screen
@@ -92,46 +194,6 @@ class BasicGame(GameGL):
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
 
-        action = 2.0 * np.random.random() - 1.0
-        if action < -0.3:
-            self.xPlayer -= 1
-        if action > 0.3:
-            self.xPlayer += 1
-
-        # limit players reach
-        if self.xPlayer < 0:
-            self.xPlayer = 0
-        if self.xPlayer > self.xMatrix-1:
-            self.xPlayer = self.xMatrix-1
-
-        # update ball coordinates
-        self.xBall += self.xV
-        self.yBall += self.yV
-
-        # bounce ball on wall
-        if (self.xBall > self.xMatrix or self.xBall < 1):
-            self.xV = -self.xV
-        if (self.yBall > self.yMatrix or self.yBall < 1):
-            self.yV = -self.yV
-
-        # check whether ball on bottom line
-        if self.yBall == 0:
-            # player-ball collision
-            if (self.xPlayer == self.xBall
-                    or self.xPlayer == self.xBall - 1
-                    or self.xPlayer == self.xBall - 2):
-                print("positive reward")
-            else:
-                print("negative reward")
-
-        self.drawBall()
-        self.drawPlayer()
-
-        # adaptive speed depending on matrix size
-        time.sleep(0.8/((self.xMatrix+self.yMatrix)/2))
-
-        glutSwapBuffers()
-
     def start(self):
         glutInit()
         glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_ALPHA | GLUT_DEPTH)
@@ -139,9 +201,9 @@ class BasicGame(GameGL):
         glutInitWindowPosition(100, 100)
         glutCreateWindow(self.toCString(self.windowName))
         # self.init()
-        glutDisplayFunc(self.display)
+        glutDisplayFunc(self.run)
         glutReshapeFunc(self.onResize)
-        glutIdleFunc(self.display)
+        glutIdleFunc(self.run)
         glutKeyboardFunc(self.keyboard)
         glutMainLoop()
 
@@ -172,23 +234,21 @@ class BasicGame(GameGL):
         glVertex2f(xPos, yPos + (self.pixelSize * height))
         glEnd()
 
-    def drawPlayer(self, width=wPlayer, height=1, x=0, y=0, color=(1.0, 0.0, 0.0)):
-        x = self.xPlayer
-        xPos = x * self.pixelSize
-        # set a bit away from bottom
-        yPos = y * self.pixelSize  # + (self.pixelSize * height / 2)
+    def drawPlayer(self, width=wPlayer, height=1, color=(1.0, 0.0, 0.0)):
+
+        xPos = self.xPlayer * self.pixelSize
         # set color
         glColor3f(color[0], color[1], color[2])
         # start drawing a rectangle
         glBegin(GL_QUADS)
         # bottom left point
-        glVertex2f(xPos, yPos)
+        glVertex2f(xPos, 0)
         # bottom right point
-        glVertex2f(xPos + (self.pixelSize * width), yPos)
+        glVertex2f(xPos + (self.pixelSize * width), 0)
         # top right point
-        glVertex2f(xPos + (self.pixelSize * width), yPos + (self.pixelSize * height / 4))
+        glVertex2f(xPos + (self.pixelSize * width), (self.pixelSize * height))
         # top left point
-        glVertex2f(xPos, yPos + (self.pixelSize * height / 4))
+        glVertex2f(xPos, (self.pixelSize * height))
         glEnd()
 
 
