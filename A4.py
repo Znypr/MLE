@@ -53,12 +53,11 @@ class BasicGame(GameGL):
     windowName = "PingPong"
     pixelSize = 30
 
-    xMatrix = 5
-    yMatrix = 5
+    xMatrix = 4
+    yMatrix = 6
 
     xBall = xMatrix//2
     yBall = yMatrix//2
-
 
     xPlayer = xMatrix//2
     wPlayer = 2
@@ -149,7 +148,7 @@ class BasicGame(GameGL):
         if self.yBall == 1 and self.yV == -1:
             self.score += rewards[self.xPlayer]
             # player-ball collision
-            if self.xBall >= self.xPlayer-1 and self.xBall <= self.xPlayer + self.wPlayer:
+            if self.xBall >= self.xPlayer and self.xBall <= self.xPlayer+self.wPlayer-1:
                 # bounce ball on player
                 self.yV = -self.yV
                 print("HIT > ", self.score)
@@ -159,11 +158,17 @@ class BasicGame(GameGL):
             print(rewards)
 
 
+    def getState(self):
+        projection = self.calculateProjection()
+        rewards = self.getRewards(projection)
+
+        return rewards
+
     def run(self):
 
         self.display()
 
-        rewards = self.getRewards(self.calculateProjection())
+        s = self.getState()
 
         self.movePlayer()
         self.limitPlayerReach()
@@ -171,14 +176,14 @@ class BasicGame(GameGL):
         self.moveBall()
         self.bounceBall()
 
-        self.handleCollision(rewards)
+        self.handleCollision(s)
 
 
         self.drawBall()
         self.drawPlayer()
 
         # adaptive speed depending on matrix size
-        time.sleep(1/((self.xMatrix+self.yMatrix)))
+        time.sleep(2/((self.xMatrix+self.yMatrix)))
 
         glutSwapBuffers()
 
