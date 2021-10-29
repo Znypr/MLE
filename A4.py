@@ -54,7 +54,7 @@ class BasicGame(GameGL):
     windowName = "PingPong"
     pixelSize = 30
 
-    xMatrix, yMatrix = 4, 6
+    xMatrix, yMatrix = 10, 10
 
     xBall, yBall = xMatrix//2, yMatrix//2
 
@@ -66,6 +66,7 @@ class BasicGame(GameGL):
     score = 0
     gamma = 0.9 #[0,1]
     epsilon = 0.1
+    action = [-1,0,1]
 
     # ENGINE
     def __init__(self, name, width=pixelSize*xMatrix, height=pixelSize*yMatrix):
@@ -105,7 +106,7 @@ class BasicGame(GameGL):
 
         self.display()
 
-        s = self.getState()
+        #s = self.getState()
 
         self.movePlayer()
         self.limitPlayerReach()
@@ -113,7 +114,7 @@ class BasicGame(GameGL):
         self.moveBall()
         self.bounceBall()
 
-        self.handleCollision(s)
+        #self.handleCollision(s)
 
         self.drawBall()
         self.drawPlayer()
