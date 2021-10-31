@@ -1,4 +1,3 @@
-import math
 import random
 import sys
 import time
@@ -16,28 +15,10 @@ except:
     print("ERROR: PyOpenGL not installed properly.")
     sys.exit()
 
-'''
-INSTALLATION:
------------------------------------------
-unter anaconda (python 3.6):
-    conda install numpy
-    conda install freeglut
-    conda install pyopengl
-    conda install pyopengl-accelerate
 
-(bei fehlenden Bibliotheken googeln)
-
-Ausführung:
-    start anaconda prompt
-    navigiere in den Game Ordner
-    tippe: python A5.py
------------------------------------------
-'''
-
-
-gamma = 0.5 #[0,1]
-alpha = 0.99 #[0,1]
-epsilon = 0.1 #[0,1]
+gamma = 0.9  # [0,1]
+alpha = 0.9  # [0,1]
+epsilon = 0.2  # [0,1]
 state = 0
 
 
@@ -56,20 +37,19 @@ class GameGL(object):
 
 
 class BasicGame(GameGL):
-
-    windowName = "y:"+ str(gamma)+ " a:"+ str(alpha)+ " e:"+ str(epsilon)
+    windowName = "y:" + str(gamma) + " a:" + str(alpha) + " e:" + str(epsilon)
     pixelSize = 30
-    n = 0.1 #[0,5]
+    n = 0.3  # [0,5]
     score = 0
+    reward = 0
 
-    xMatrix, yMatrix = 10, 14
+    xMatrix, yMatrix = 5, 5
     xBall, yBall = (xMatrix // 2), (yMatrix // 2)
     xPlayer, wPlayer = (xMatrix // 2), 1
     xV, yV = 1, 1
 
-
-    amount_states = xMatrix**2 * 4 * (xMatrix-wPlayer)
-    limit = [xMatrix, yMatrix, 1, 1, (xMatrix-wPlayer)]
+    amount_states = xMatrix ** 2 * 4 * (xMatrix - (wPlayer-1))
+    limit = [xMatrix, yMatrix, 1, 1, (xMatrix - (wPlayer-1))]
     action = [-1, 0, 1]
     Q_t = np.zeros((amount_states, len(action)))
 
@@ -184,6 +164,7 @@ class BasicGame(GameGL):
             self.yV = -self.yV
 
     def handle_collision(self):
+        self.reward = 0
         # check whether ball on bottom line
         if self.yBall == 1 and self.yV == -1:
 
@@ -191,10 +172,12 @@ class BasicGame(GameGL):
             if self.xBall >= self.xPlayer and self.xBall <= self.xPlayer + self.wPlayer - 1:
                 # bounce ball on player
                 self.yV = -self.yV
-                self.score = self.score + 1
+                self.score = self.score + self.xMatrix/10
+                self.reward = self.xMatrix/10
                 print("HIT > ", self.score)
             else:
                 print("      ", self.score, " < MISS")
+                self.reward = -1
                 self.score = self.score - 1
 
 
@@ -202,7 +185,7 @@ class BasicGame(GameGL):
     def initiate_Q(self):
         for i in range(len(self.Q_t)):
             for j in range(len(self.Q_t[0])):
-                rand = random.uniform(0.01,0.001)
+                rand = random.uniform(0.01, 0.001)
                 self.Q_t[i][j] = rand
 
     def get_environment(self):
@@ -234,12 +217,10 @@ class BasicGame(GameGL):
     def get_reward(self, action):
         return self.Q_t[self.state][action]
 
-    def update_Q_t(self, new_state, action, reward):
+    def update_Q_t(self, new_state, action):
         val, idx = self.get_max(self.Q_t[new_state])
         self.Q_t[self.state][action] = self.Q_t[self.state][action] + \
-                                       alpha * (reward + gamma * val - self.Q_t[self.state][action])
-
-
+                                       alpha * (self.reward + gamma * val - self.Q_t[self.state][action])
 
     def run(self):
 
@@ -249,15 +230,13 @@ class BasicGame(GameGL):
         self.move_player(action)
         self.limit_player_reach()
 
-        reward = self.get_reward(action)
-        new_state = self.get_state()
-
-        self.update_Q_t(new_state, action, reward)
-
         self.move_ball()
         self.bounce_ball()
 
         self.handle_collision()
+
+        new_state = self.get_state()
+        self.update_Q_t(new_state, action)
 
         self.draw_ball()
         self.draw_player()
@@ -265,10 +244,11 @@ class BasicGame(GameGL):
         self.state = new_state
 
         # adaptive speed depending on matrix size
-        time.sleep(self.n/(self.xMatrix*self.yMatrix))
+        time.sleep(self.n / (self.xMatrix * self.yMatrix))
 
         glutSwapBuffers()
 
+
 if __name__ == '__main__':
-    game = BasicGame("y:"+ str(gamma)+ " a:"+ str(alpha)+ " e:"+ str(epsilon))
+    game = BasicGame("y:" + str(gamma) + " a:" + str(alpha) + " e:" + str(epsilon))
     game.start()
