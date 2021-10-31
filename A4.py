@@ -16,9 +16,9 @@ except:
     sys.exit()
 
 
-gamma = 0.5  # [0,1]
-alpha = 0.99  # [0,1]
-epsilon = 0.1  # [0,1]
+gamma = 0.9  # [0,1]
+alpha = 0.1  # [0,1]
+epsilon = 0.01  # [0,1]
 state = 0
 
 
@@ -37,29 +37,32 @@ class GameGL(object):
 
 
 class BasicGame(GameGL):
-    windowName = "y:" + str(gamma) + " a:" + str(alpha) + " e:" + str(epsilon)
+
     pixelSize = 30
-    n = 0.3  # [0,5]
+    speed = 0.3
     score = 0
+    count = 0
+    hits = 0
     reward = 0
 
-    xMatrix, yMatrix = 10, 10
-    xBall, yBall = (xMatrix // 2), (yMatrix // 2)
-    xPlayer, wPlayer = (xMatrix // 2), 3
-    xV, yV = 1, 1
-
-    amount_states = xMatrix ** 2 * 4 * (xMatrix - (wPlayer-1))
-    limit = [xMatrix, yMatrix, 1, 1, (xMatrix - (wPlayer-1))]
     action = [-1, 0, 1]
-    Q_t = np.zeros((amount_states, len(action)))
 
 
     # ENGINE
-    def __init__(self, name, width=pixelSize * xMatrix, height=pixelSize * yMatrix):
+    def __init__(self, name, x, y, w):
         super
         self.windowName = name
-        self.width = width
-        self.height = height
+        self.xMatrix, self.yMatrix = x, y
+        self.width = self.pixelSize * self.xMatrix
+        self.height = self.pixelSize * self.yMatrix
+
+        self.xBall, self.yBall = (self.xMatrix // 2), (self.yMatrix // 2)
+        self.xPlayer, self.wPlayer = (self.xMatrix // 2), w
+        self.xV, self.yV = 1, 1
+
+        self.amount_states = self.xMatrix ** 2 * 4 * (self.xMatrix - (self.wPlayer - 1))
+        self.limit = [self.xMatrix, self.yMatrix, 1, 1, (self.xMatrix - (self.wPlayer - 1))]
+        self.Q_t = np.zeros((self.amount_states, len(self.action)))
 
     def keyboard(self, key, x, y):
         # ESC = \x1w
@@ -104,7 +107,7 @@ class BasicGame(GameGL):
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
 
-    def draw_ball(self, width=1, height=1, x=xBall, y=yBall, color=(0.0, 1.0, 0.0)):
+    def draw_ball(self, width=1, height=1, color=(0.0, 1.0, 0.0)):
         x = self.xBall
         y = self.yBall
         xPos = x * self.pixelSize
@@ -123,9 +126,10 @@ class BasicGame(GameGL):
         glVertex2f(xPos, yPos + (self.pixelSize * height))
         glEnd()
 
-    def draw_player(self, width=wPlayer, height=1, color=(1.0, 0.0, 0.0)):
+    def draw_player(self, height=1, color=(1.0, 0.0, 0.0)):
 
         xPos = self.xPlayer * self.pixelSize
+
         # set color
         glColor3f(color[0], color[1], color[2])
         # start drawing a rectangle
@@ -133,9 +137,9 @@ class BasicGame(GameGL):
         # bottom left point
         glVertex2f(xPos, 0)
         # bottom right point
-        glVertex2f(xPos + (self.pixelSize * width), 0)
+        glVertex2f(xPos + (self.pixelSize * self.wPlayer), 0)
         # top right point
-        glVertex2f(xPos + (self.pixelSize * width), (self.pixelSize * height))
+        glVertex2f(xPos + (self.pixelSize * self.wPlayer), (self.pixelSize * height))
         # top left point
         glVertex2f(xPos, (self.pixelSize * height))
         glEnd()
@@ -167,15 +171,27 @@ class BasicGame(GameGL):
         # check whether ball on bottom line
         if self.yBall == 1 and self.yV == -1:
 
+            self.count += 1
+
+            if self.xV > 0:
+                threshold_r = self.xPlayer + (self.wPlayer - 1)
+                threshold_l = self.xPlayer - 1
+            else:
+                threshold_r = self.xPlayer + self.wPlayer
+                threshold_l = self.xPlayer
+
             # player-ball collision
-            if self.xBall >= self.xPlayer and self.xBall <= self.xPlayer + self.wPlayer - 1:
+            if self.xBall >= threshold_l and self.xBall <= threshold_r:
                 # bounce ball on player
+                self.hits += 1
                 self.yV = -self.yV
                 self.score = self.score + self.xMatrix/10
-                self.reward = self.xMatrix/10
-                print("HIT > ", self.score)
+                self.reward = 1
+                p = int(round(self.hits / self.count, 2)*100)
+                print("hitrate:",p, "%       HIT > ", self.score)
             else:
-                print("      ", self.score, " < MISS")
+                p = int(round(self.hits / self.count, 2)*100)
+                print("hitrate:",p, "%             ", self.score, " < MISS")
                 self.reward = -1
                 self.score = self.score - 1
 
@@ -218,6 +234,8 @@ class BasicGame(GameGL):
         self.Q_t[self.state][action] = self.Q_t[self.state][action] + \
                                        alpha * (self.reward + gamma * val - self.Q_t[self.state][action])
 
+
+
     def run(self):
 
         action = self.select_action()
@@ -238,12 +256,13 @@ class BasicGame(GameGL):
         self.draw_player()
 
 
-        # adaptive speed depending on matrix size
-        time.sleep(self.n / (self.xMatrix * self.yMatrix))
-
+        time.sleep(self.speed / (self.xMatrix * self.yMatrix))
         glutSwapBuffers()
 
 
 if __name__ == '__main__':
-    game = BasicGame("y:" + str(gamma) + " a:" + str(alpha) + " e:" + str(epsilon))
+
+    xMax, yMax = 10, 10
+    player_width = 3
+    game = BasicGame("pingpong", xMax, yMax, player_width)
     game.start()
