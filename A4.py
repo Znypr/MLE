@@ -16,9 +16,9 @@ except:
     sys.exit()
 
 
-gamma = 0.9  # [0,1]
-alpha = 0.9  # [0,1]
-epsilon = 0.2  # [0,1]
+gamma = 0.5  # [0,1]
+alpha = 0.99  # [0,1]
+epsilon = 0.1  # [0,1]
 state = 0
 
 
@@ -43,9 +43,9 @@ class BasicGame(GameGL):
     score = 0
     reward = 0
 
-    xMatrix, yMatrix = 5, 5
+    xMatrix, yMatrix = 10, 10
     xBall, yBall = (xMatrix // 2), (yMatrix // 2)
-    xPlayer, wPlayer = (xMatrix // 2), 1
+    xPlayer, wPlayer = (xMatrix // 2), 3
     xV, yV = 1, 1
 
     amount_states = xMatrix ** 2 * 4 * (xMatrix - (wPlayer-1))
@@ -68,14 +68,13 @@ class BasicGame(GameGL):
             sys.exit(0)
 
     def start(self):
-        self.initiate_Q()
         glutInit()
         glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_ALPHA | GLUT_DEPTH)
         glutInitWindowSize(self.width, self.height)
         glutInitWindowPosition(100, 100)
         glutCreateWindow(self.toCString(self.windowName))
-        # self.init()
 
+        self.initiate_Q()
         self.state = self.get_state()
         glutDisplayFunc(self.run)
         glutReshapeFunc(self.on_resize)
@@ -214,9 +213,6 @@ class BasicGame(GameGL):
                 idx = i
         return max, idx
 
-    def get_reward(self, action):
-        return self.Q_t[self.state][action]
-
     def update_Q_t(self, new_state, action):
         val, idx = self.get_max(self.Q_t[new_state])
         self.Q_t[self.state][action] = self.Q_t[self.state][action] + \
@@ -224,24 +220,23 @@ class BasicGame(GameGL):
 
     def run(self):
 
-        self.display()
-
         action = self.select_action()
         self.move_player(action)
         self.limit_player_reach()
 
         self.move_ball()
         self.bounce_ball()
-
         self.handle_collision()
 
         new_state = self.get_state()
         self.update_Q_t(new_state, action)
+        self.state = new_state
 
+
+        self.display()
         self.draw_ball()
         self.draw_player()
 
-        self.state = new_state
 
         # adaptive speed depending on matrix size
         time.sleep(self.n / (self.xMatrix * self.yMatrix))
