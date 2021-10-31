@@ -1,3 +1,4 @@
+import math
 import random
 import sys
 import time
@@ -34,6 +35,12 @@ Ausführung:
 '''
 
 
+gamma = 0.5 #[0,1]
+alpha = 0.99 #[0,1]
+epsilon = 0.1 #[0,1]
+state = 0
+
+
 class GameGL(object):
     config = None
 
@@ -50,26 +57,25 @@ class GameGL(object):
 
 class BasicGame(GameGL):
 
-
-    windowName = "PingPong"
+    windowName = "y:"+ str(gamma)+ " a:"+ str(alpha)+ " e:"+ str(epsilon)
     pixelSize = 30
+    n = 0.1 #[0,5]
+    score = 0
 
-    xMatrix, yMatrix = 10, 10
-
-    xBall, yBall = xMatrix//2, yMatrix//2
-
-    xPlayer, wPlayer = xMatrix//2, 2
-
+    xMatrix, yMatrix = 10, 14
+    xBall, yBall = (xMatrix // 2), (yMatrix // 2)
+    xPlayer, wPlayer = (xMatrix // 2), 1
     xV, yV = 1, 1
 
 
-    score = 0
-    gamma = 0.9 #[0,1]
-    epsilon = 0.1
-    action = [-1,0,1]
+    amount_states = xMatrix**2 * 4 * (xMatrix-wPlayer)
+    limit = [xMatrix, yMatrix, 1, 1, (xMatrix-wPlayer)]
+    action = [-1, 0, 1]
+    Q_t = np.zeros((amount_states, len(action)))
+
 
     # ENGINE
-    def __init__(self, name, width=pixelSize*xMatrix, height=pixelSize*yMatrix):
+    def __init__(self, name, width=pixelSize * xMatrix, height=pixelSize * yMatrix):
         super
         self.windowName = name
         self.width = width
@@ -82,47 +88,28 @@ class BasicGame(GameGL):
             sys.exit(0)
 
     def start(self):
+        self.initiate_Q()
         glutInit()
         glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_ALPHA | GLUT_DEPTH)
         glutInitWindowSize(self.width, self.height)
         glutInitWindowPosition(100, 100)
         glutCreateWindow(self.toCString(self.windowName))
         # self.init()
+
+        self.state = self.get_state()
         glutDisplayFunc(self.run)
-        glutReshapeFunc(self.onResize)
+        glutReshapeFunc(self.on_resize)
         glutIdleFunc(self.run)
         glutKeyboardFunc(self.keyboard)
         glutMainLoop()
 
-    def updateSize(self):
+    def update_size(self):
         self.width = glutGet(GLUT_WINDOW_WIDTH)
         self.height = glutGet(GLUT_WINDOW_HEIGHT)
 
-    def onResize(self, width, height):
+    def on_resize(self, width, height):
         self.width = width
         self.height = height
-
-    def run(self):
-
-        self.display()
-
-        #s = self.getState()
-
-        self.movePlayer()
-        self.limitPlayerReach()
-
-        self.moveBall()
-        self.bounceBall()
-
-        #self.handleCollision(s)
-
-        self.drawBall()
-        self.drawPlayer()
-
-        # adaptive speed depending on matrix size
-        time.sleep(2 / ((self.xMatrix + self.yMatrix)))
-
-        glutSwapBuffers()
 
 
     # VISUALISATION
@@ -138,7 +125,7 @@ class BasicGame(GameGL):
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
 
-    def drawBall(self, width=1, height=1, x=xBall, y=yBall, color=(0.0, 1.0, 0.0)):
+    def draw_ball(self, width=1, height=1, x=xBall, y=yBall, color=(0.0, 1.0, 0.0)):
         x = self.xBall
         y = self.yBall
         xPos = x * self.pixelSize
@@ -157,7 +144,7 @@ class BasicGame(GameGL):
         glVertex2f(xPos, yPos + (self.pixelSize * height))
         glEnd()
 
-    def drawPlayer(self, width=wPlayer, height=1, color=(1.0, 0.0, 0.0)):
+    def draw_player(self, width=wPlayer, height=1, color=(1.0, 0.0, 0.0)):
 
         xPos = self.xPlayer * self.pixelSize
         # set color
@@ -176,124 +163,112 @@ class BasicGame(GameGL):
 
 
     # PHYSICS
-    def movePlayer(self):
+    def move_player(self, idx):
+        self.xPlayer += self.action[idx]
 
-        action = 2.0 * np.random.random() - 1.0
-        if action < -0.3:
-            self.xPlayer -= 1
-        if action > 0.3:
-            self.xPlayer += 1
-
-    def limitPlayerReach(self):
+    def limit_player_reach(self):
         # limit players reach
         if self.xPlayer < 0:
             self.xPlayer = 0
-        if self.xPlayer+self.wPlayer > self.xMatrix:
-            self.xPlayer = self.xMatrix-self.wPlayer
+        if self.xPlayer + self.wPlayer > self.xMatrix:
+            self.xPlayer = self.xMatrix - self.wPlayer
 
-    def moveBall(self):
+    def move_ball(self):
         self.xBall += self.xV
         self.yBall += self.yV
 
-    def bounceBall(self):
-        if (self.xBall >= self.xMatrix-1 or self.xBall < 1):
+    def bounce_ball(self):
+        if (self.xBall >= self.xMatrix - 1 or self.xBall < 1):
             self.xV = -self.xV
-        if (self.yBall >= self.yMatrix-1 or self.yBall < 1):
+        if (self.yBall >= self.yMatrix - 1 or self.yBall < 1):
             self.yV = -self.yV
 
-    def handleCollision(self, rewards):
+    def handle_collision(self):
         # check whether ball on bottom line
         if self.yBall == 1 and self.yV == -1:
-            self.score += rewards[self.xPlayer]
+
             # player-ball collision
-            if self.xBall >= self.xPlayer and self.xBall <= self.xPlayer+self.wPlayer-1:
+            if self.xBall >= self.xPlayer and self.xBall <= self.xPlayer + self.wPlayer - 1:
                 # bounce ball on player
                 self.yV = -self.yV
+                self.score = self.score + 1
                 print("HIT > ", self.score)
             else:
-                print("MISS > ", self.score)
-
-            print(rewards)
+                print("      ", self.score, " < MISS")
+                self.score = self.score - 1
 
 
     # LEARNING
-    '''
-        def simulateBallMovement(self, x, y, xV, yV):
-    
-            x += xV
-            y += yV
-    
-            if (x >= self.xMatrix-1 or x < 1):
-                xV = -xV
-            if (y >= self.yMatrix-1 or y < 1):
-                yV = -yV
-    
-            return x,y, xV, yV
-    
-        def calculateProjection(self):
-    
-            x, y = self.xBall, self.yBall
-            xV, yV = self.xV, self.yV
-    
-            while y > 1:
-                x, y, xV, yV = self.simulateBallMovement(x, y, xV, yV)
-    
-            return x
-    
-        def getRewards(self, projectedTarget):
-    
-            rewards = np.ones((self.xMatrix - self.wPlayer + 1,), dtype=int) * -1
-    
-            for i in range(self.wPlayer):
-                if projectedTarget < len(rewards) and projectedTarget >= 0:
-                    rewards[projectedTarget] = 1
-    
-                projectedTarget = projectedTarget - 1
-            return rewards
-    
-        def getState(self):
-            projection = self.calculateProjection()
-            rewards = self.getRewards(projection)
-    
-            return rewards
-    '''
+    def initiate_Q(self):
+        for i in range(len(self.Q_t)):
+            for j in range(len(self.Q_t[0])):
+                rand = random.uniform(0.01,0.001)
+                self.Q_t[i][j] = rand
 
-    def getState(env, limit):
+    def get_environment(self):
+        return [self.xBall, self.yBall, self.xV, self.yV, self.xPlayer]
+
+    def get_state(self):
+        env = self.get_environment()
         s = env[0]
-        for i in range(1,len(env)):
-            s = s*limit[i] + env[i]
+        for i in range(1, len(env)):
+            s = s * self.limit[i] + env[i]
         return s
 
-    def selectAction(self, a, greedy):
-        if greedy:
-            return a[random.randrange(0,a.length)]
-        else:
-            return max(a)
-
-    def select_greedy(self, a):
+    def select_action(self):
         p = random.random()
-        if p>self.epsilon:
-            return selectAction(a, false)
+        if p > epsilon:
+            val, idx = self.get_max(self.Q_t[self.state])
+            return idx
         else:
-            return selectAction(a, true)
+            return random.randrange(0, len(self.action))
 
-    def max(arr, max=0):
-        for i in range(arr.length):
-            if arr[i]>max:
-                max=arr[i]
-        return max
+    def get_max(self, arr):
+        idx, max = 0, 0
+        for i in range(len(arr)):
+            if arr[i] > max:
+                max = arr[i]
+                idx = i
+        return max, idx
 
-    def Q(self, t, state, action):
-        # return discounted reward for (s,a)
-        reward = 0
-        while true:
-            reward += self.gamma**i * reward[t+i]
+    def get_reward(self, action):
+        return self.Q_t[self.state][action]
+
+    def update_Q_t(self, new_state, action, reward):
+        val, idx = self.get_max(self.Q_t[new_state])
+        self.Q_t[self.state][action] = self.Q_t[self.state][action] + \
+                                       alpha * (reward + gamma * val - self.Q_t[self.state][action])
 
 
 
+    def run(self):
 
+        self.display()
 
+        action = self.select_action()
+        self.move_player(action)
+        self.limit_player_reach()
+
+        reward = self.get_reward(action)
+        new_state = self.get_state()
+
+        self.update_Q_t(new_state, action, reward)
+
+        self.move_ball()
+        self.bounce_ball()
+
+        self.handle_collision()
+
+        self.draw_ball()
+        self.draw_player()
+
+        self.state = new_state
+
+        # adaptive speed depending on matrix size
+        time.sleep(self.n/(self.xMatrix*self.yMatrix))
+
+        glutSwapBuffers()
 
 if __name__ == '__main__':
-    game = BasicGame("PingPong")
+    game = BasicGame("y:"+ str(gamma)+ " a:"+ str(alpha)+ " e:"+ str(epsilon))
     game.start()
