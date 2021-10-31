@@ -1,6 +1,7 @@
 import random
 import sys
 import time
+import math
 
 try:
     import numpy as np
@@ -16,11 +17,52 @@ except:
     sys.exit()
 
 
-gamma = 0.5  # [0,1]
-alpha = 0.99  # [0,1]
-epsilon = 0.1  # [0,1]
+gamma = 0.9  # [0,1]
+alpha = 0.1  # [0,1]
+epsilon = 0.01  # [0,1]
 state = 0
 
+
+class Player(object):
+    xPos = 0
+    yPos = 0
+    width = 0
+
+    def __init__(self, xPos, width):
+        super
+        self.xPos = xPos
+        self.width = width
+
+    def move(self, d):
+        self.xPos += d
+
+    def limit_mobility(self, xLimit):
+        # limit players reach
+        if self.xPos < 0:
+            self.xPos = 0
+        if self.xPos + self.width > xLimit:
+            self.xPos = xLimit - self.width
+
+class Ball(object):
+    xPos, yPos = 0, 0
+    xDir, yDir = 1, 1
+
+    def __init__(self, xPos, yPos, xDir, yDir):
+        self.xPos, self.yPos = xPos, yPos
+        self.xDir, self.yDir = xDir, yDir
+
+    def move(self):
+        self.xPos += self.xDir
+        self.yPos += self.yDir
+
+    def set_direction(self, xDir, yDir):
+        self.xDir, self.yDir = xDir, yDir
+
+    def bounce_ball(self, xLimit, yLimit):
+        if (self.xPos >= xLimit - 1 or self.xPos < 1):
+            self.xDir = -self.xDir
+        if (self.yPos >= yLimit - 1 or self.yPos < 1):
+            self.yDir = -self.yDir
 
 class GameGL(object):
     config = None
@@ -28,38 +70,35 @@ class GameGL(object):
     def __init__(self, config=None):
         self.config = config
 
-    '''
-    Is needed for the OpenGL-Library because standard strings are not allowed.
-    '''
 
     def toCString(self, string):
         return bytes(string, "ascii")
 
-
 class BasicGame(GameGL):
-    windowName = "y:" + str(gamma) + " a:" + str(alpha) + " e:" + str(epsilon)
+
     pixelSize = 30
-    n = 0.3  # [0,5]
     score = 0
     reward = 0
-
-    xMatrix, yMatrix = 10, 10
-    xBall, yBall = (xMatrix // 2), (yMatrix // 2)
-    xPlayer, wPlayer = (xMatrix // 2), 3
-    xV, yV = 1, 1
-
-    amount_states = xMatrix ** 2 * 4 * (xMatrix - (wPlayer-1))
-    limit = [xMatrix, yMatrix, 1, 1, (xMatrix - (wPlayer-1))]
     action = [-1, 0, 1]
-    Q_t = np.zeros((amount_states, len(action)))
 
 
     # ENGINE
-    def __init__(self, name, width=pixelSize * xMatrix, height=pixelSize * yMatrix):
+    def __init__(self, name, xMatrix, yMatrix, speed, ball, player):
         super
+
         self.windowName = name
-        self.width = width
-        self.height = height
+        self.width = self.pixelSize * xMatrix
+        self.height = self.pixelSize * yMatrix
+
+        self.xMatrix, self.yMatrix = xMatrix, yMatrix
+        self.speed = speed
+
+        self.ball = ball
+        self.player = player
+
+        self.amount_states = self.xMatrix ** 2 * 4 * (self.xMatrix - (self.player.width - 1))
+        self.limit = [self.xMatrix-1, self.yMatrix-1, 1, 1, (self.xMatrix - (self.player.width - 1))]
+        self.Q_t = np.zeros((self.amount_states, len(self.action)))
 
     def keyboard(self, key, x, y):
         # ESC = \x1w
@@ -104,9 +143,12 @@ class BasicGame(GameGL):
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
 
-    def draw_ball(self, width=1, height=1, x=xBall, y=yBall, color=(0.0, 1.0, 0.0)):
-        x = self.xBall
-        y = self.yBall
+    def draw_ball(self, color=(0.0, 1.0, 0.0)):
+
+        width, height = 1, 1
+
+        x = ball.xPos
+        y = ball.yPos
         xPos = x * self.pixelSize
         yPos = y * self.pixelSize
         # set color
@@ -123,9 +165,10 @@ class BasicGame(GameGL):
         glVertex2f(xPos, yPos + (self.pixelSize * height))
         glEnd()
 
-    def draw_player(self, width=wPlayer, height=1, color=(1.0, 0.0, 0.0)):
+    def draw_player(self, color=(1.0, 0.0, 0.0)):
 
-        xPos = self.xPlayer * self.pixelSize
+        height = 1
+        xPos = player.xPos * self.pixelSize
         # set color
         glColor3f(color[0], color[1], color[2])
         # start drawing a rectangle
@@ -133,62 +176,51 @@ class BasicGame(GameGL):
         # bottom left point
         glVertex2f(xPos, 0)
         # bottom right point
-        glVertex2f(xPos + (self.pixelSize * width), 0)
+        glVertex2f(xPos + (self.pixelSize * player.width), 0)
         # top right point
-        glVertex2f(xPos + (self.pixelSize * width), (self.pixelSize * height))
+        glVertex2f(xPos + (self.pixelSize * player.width), (self.pixelSize * height))
         # top left point
         glVertex2f(xPos, (self.pixelSize * height))
         glEnd()
 
 
     # PHYSICS
-    def move_player(self, idx):
-        self.xPlayer += self.action[idx]
-
-    def limit_player_reach(self):
-        # limit players reach
-        if self.xPlayer < 0:
-            self.xPlayer = 0
-        if self.xPlayer + self.wPlayer > self.xMatrix:
-            self.xPlayer = self.xMatrix - self.wPlayer
-
-    def move_ball(self):
-        self.xBall += self.xV
-        self.yBall += self.yV
-
-    def bounce_ball(self):
-        if (self.xBall >= self.xMatrix - 1 or self.xBall < 1):
-            self.xV = -self.xV
-        if (self.yBall >= self.yMatrix - 1 or self.yBall < 1):
-            self.yV = -self.yV
-
     def handle_collision(self):
         self.reward = 0
         # check whether ball on bottom line
-        if self.yBall == 1 and self.yV == -1:
+        if ball.yPos == 1 and ball.yDir == -1:
+
+            if ball.xDir > 0:
+                threshold_r = player.xPos + (player.width-1)
+                threshold_l = player.xPos - 1
+            else:
+                threshold_r = player.xPos + player.width
+                threshold_l = player.xPos
 
             # player-ball collision
-            if self.xBall >= self.xPlayer and self.xBall <= self.xPlayer + self.wPlayer - 1:
+            if ball.xPos >= threshold_l and ball.xPos <= threshold_r:
                 # bounce ball on player
-                self.yV = -self.yV
-                self.score = self.score + self.xMatrix/10
-                self.reward = self.xMatrix/10
-                print("HIT > ", self.score)
-            else:
-                print("      ", self.score, " < MISS")
-                self.reward = -1
-                self.score = self.score - 1
+                ball.yDir = -ball.yDir
+                self.reward = 1
+                self.score += 1
+                #self.score = math.floor(self.score + self.xMatrix/10)
+                #self.reward = self.xMatrix/10
+                print("  HIT> ", str(self.score).zfill(3))
 
+            else:
+                print("       ", str(self.score).zfill(3), "  <MISS")
+                self.reward = -1
+                self.score -= 1
 
     # LEARNING
     def initiate_Q(self):
         for i in range(len(self.Q_t)):
             for j in range(len(self.Q_t[0])):
-                rand = random.uniform(0.01, 0.001)
+                rand = random.uniform(0.1, 0.01)
                 self.Q_t[i][j] = rand
 
     def get_environment(self):
-        return [self.xBall, self.yBall, self.xV, self.yV, self.xPlayer]
+        return [ball.xPos, ball.yPos, ball.xDir, ball.yDir, player.xPos]
 
     def get_state(self):
         env = self.get_environment()
@@ -218,14 +250,16 @@ class BasicGame(GameGL):
         self.Q_t[self.state][action] = self.Q_t[self.state][action] + \
                                        alpha * (self.reward + gamma * val - self.Q_t[self.state][action])
 
+
+
     def run(self):
 
-        action = self.select_action()
-        self.move_player(action)
-        self.limit_player_reach()
+        action = self.action[self.select_action()]
+        player.move(action)
+        player.limit_mobility(self.xMatrix)
 
-        self.move_ball()
-        self.bounce_ball()
+        ball.move()
+        ball.bounce_ball(self.xMatrix, self.yMatrix)
         self.handle_collision()
 
         new_state = self.get_state()
@@ -238,12 +272,20 @@ class BasicGame(GameGL):
         self.draw_player()
 
 
-        # adaptive speed depending on matrix size
-        time.sleep(self.n / (self.xMatrix * self.yMatrix))
-
+        time.sleep(self.speed / (self.xMatrix * self.yMatrix))
         glutSwapBuffers()
 
 
 if __name__ == '__main__':
-    game = BasicGame("y:" + str(gamma) + " a:" + str(alpha) + " e:" + str(epsilon))
+
+    # field
+    x, y = 10, 10
+    xMid, yMid = x//2, y//2
+
+    speed = 1
+
+    ball = Ball(xMid, yMid, 1, 1)
+    player = Player(xMid, 3)
+
+    game = BasicGame("pingpong", x, y, speed, ball, player)
     game.start()
