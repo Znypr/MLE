@@ -1,3 +1,6 @@
+#author: Candra Mulyadhi (1920996)
+#date: 31/10/2021
+
 import random
 import sys
 import time
