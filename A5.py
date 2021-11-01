@@ -25,23 +25,23 @@ def random_prototype(prototypes):
     return prototypes[rand_category][rand_idx]
 
 
-def create_spiral(origin, nodes):
-    increment = 0.1
-    multiplier = [1, 1, 1, 0, -1, -1, -1, 0]
-    spiral = []
-    d = 0 if origin.x == 1 else 4
+def create_spiral(offset = 0.0):
+    numTurns = 2
+    stepover = 0.1
+    distanceBetweenTurns = stepover * (1/2*pi)
 
-    distance = math.sqrt(1**2/2)
+    theta = 0.1
 
-    for n in range(nodes):
-        point = copy.copy(origin)
-        spiral.append(point)
-        distance += increment
-        val = math.sqrt(distance ** 2 / 2)
-        origin.x = multiplier[(n + 3 + d) % 8] * val
-        origin.y = multiplier[(n + 1 + d) % 8] * val
+    pointsPerTurn = 30
 
-    return spiral
+    points = []
+    for i in range(pointsPerTurn*numTurns):
+        r = offset + (distanceBetweenTurns*theta)
+        points.append(Point(r*np.cos(theta), r*np.sin(theta)))
+        theta += 2*pi / pointsPerTurn
+
+
+    return points
 
 
 def get_euklidean_distance(p1, p2):
@@ -54,9 +54,9 @@ def get_euklidean_distance(p1, p2):
 def check_neighborhood(neighborhood):
     amount_blue, amount_red = 0, 0
     for neighbor in neighborhood:
-        if neighbor[0] == "blue":
+        if neighbor[1] == "blue":
             amount_blue += 1
-        elif neighbor[0] == "red":
+        elif neighbor[1] == "red":
             amount_red += 1
 
     return "blue" if amount_blue > amount_red else "red"
@@ -67,7 +67,7 @@ def classify_input_vector(input_vector, prototypes, k):
     for category in prototypes:
         for prototype in prototypes[category]:
             d = get_euklidean_distance(input_vector, prototype)
-            distances.append((category, d))
+            distances.append((d, category))
 
     neighborhood = sorted(distances)[:k]
 
@@ -92,15 +92,15 @@ def visualize(prototypes):
 
 def main():
     k = 3
-    prototypes = {"blue": create_spiral(Point(1, 1), 50), "red": create_spiral(Point(-1, -1), 50)}
+    prototypes = {"blue": create_spiral(0.3), "red": create_spiral()}
+    #visualize(prototypes)
 
+    for i in range(10):
+        # lazy learning
+        input_vector = random_prototype(prototypes)
+        category = classify_input_vector(input_vector, prototypes, k)
 
-    # lazy learning
-    input_vector = random_prototype(prototypes)
-    category = classify_input_vector(input_vector, prototypes, k)
-
-    visualize(prototypes)
-    #print("Category of Input Vector ({}, {}): {}".format(input_vector.x, input_vector.y, category))
+        print("Category of Input Vector ({}, {}): {}".format(input_vector.x, input_vector.y, category))
 
 
 if __name__ == '__main__':
