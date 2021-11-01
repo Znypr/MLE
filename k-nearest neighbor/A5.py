@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-
 class Point(object):
     x = 0.0
     y = 0.0
@@ -14,9 +13,10 @@ class Point(object):
     def __init__(self, x=0.0, y=0.0):
         self.x, self.y = x, y
 
+
 def csv_to_dict(csv):
     # reading CSV file
-    points = {"blue":[], "red":[]}
+    points = {"blue": [], "red": []}
     data = pd.read_csv(csv, sep=";", header=None)
 
     for point in data.values:
@@ -32,24 +32,23 @@ def csv_to_dict(csv):
 def random_prototype(prototypes):
     rand_category = "blue" if random.randrange(2) == 1 else "red"
     rand_idx = random.randrange(len(prototypes["red"]))
-    return prototypes[rand_category][rand_idx]
+    return prototypes[rand_category][rand_idx], rand_category
 
 
-def create_spiral(offset = 0.0):
+def create_spiral(offset=0.0):
     numTurns = 2
     stepover = 0.1
-    distanceBetweenTurns = stepover * (1/2*pi)
+    distanceBetweenTurns = stepover * (1 / 2 * np.pi)
 
     theta = 0.1
 
     pointsPerTurn = 30
 
     points = []
-    for i in range(pointsPerTurn*numTurns):
-        r = offset + (distanceBetweenTurns*theta)
-        points.append(Point(r*np.cos(theta), r*np.sin(theta)))
-        theta += 2*pi / pointsPerTurn
-
+    for i in range(pointsPerTurn * numTurns):
+        r = offset + (distanceBetweenTurns * theta)
+        points.append(Point(r * np.cos(theta), r * np.sin(theta)))
+        theta += 2 * np.pi / pointsPerTurn
 
     return points
 
@@ -85,7 +84,6 @@ def classify_input_vector(input_vector, prototypes, k):
 
 
 def visualize(prototypes):
-
     for i in prototypes:
         x, y = [], []
         for point in prototypes[i]:
@@ -102,21 +100,39 @@ def visualize(prototypes):
     plt.show()
 
 
+def compare_category(input_vector_category, estimated_category):
+    return input_vector_category == estimated_category
+
+
 def main():
-    k = 3
-    #prototypes = {"blue" : create_spiral(0.3), "red" : create_spiral()}
+    k = 5
+    RUNTIME = 10
+    amount = 50
+
+    # prototypes = {"blue" : create_spiral(0.3), "red" : create_spiral()}
     prototypes = csv_to_dict("spiral.txt")
     #visualize(prototypes)
+    print("classification rate")
+    cr = 0
 
-    for i in range(10):
-        # lazy learning
-        input_vector = random_prototype(prototypes)
-        category = classify_input_vector(input_vector, prototypes, k)
+    for i in range(RUNTIME):
 
-        print("Category of Input Vector ({}, {}): {}".format(input_vector.x, input_vector.y, category))
+        count_true = 0
 
+        for j in range(1, amount):
+            # lazy learning
+            input_vector, input_vector_category = random_prototype(prototypes)
+            estimated_category = classify_input_vector(input_vector, prototypes, k)
+
+            if compare_category(input_vector_category, estimated_category):
+                count_true += 1
+            #print("Category of Input Vector ({}, {}): {}".format(input_vector.x, input_vector.y, category))
+
+        ccr = count_true/amount
+        cr += ccr
+        print("  {}: {}".format(i+1, ccr))
+
+    print("avg classification rate in {} runs: {}".format(RUNTIME, cr/RUNTIME))
 
 if __name__ == '__main__':
     main()
-
-
