@@ -1,3 +1,7 @@
+#author: Candra Mulyadhi (1920996)
+#date: 1/11/2021
+
+
 import math
 import random
 
