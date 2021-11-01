@@ -2,6 +2,10 @@ import math
 import random
 import copy
 
+import matplotlib.pyplot as plt
+import numpy as np
+from numpy import pi
+
 
 class Point(object):
     x = 0.
@@ -22,16 +26,18 @@ def random_prototype(prototypes):
 
 
 def create_spiral(origin, nodes):
-    increment = 0.5
+    increment = 0.1
     multiplier = [1, 1, 1, 0, -1, -1, -1, 0]
     spiral = []
-    val = 1
     d = 0 if origin.x == 1 else 4
+
+    distance = math.sqrt(1**2/2)
 
     for n in range(nodes):
         point = copy.copy(origin)
         spiral.append(point)
-        val += increment
+        distance += increment
+        val = math.sqrt(distance ** 2 / 2)
         origin.x = multiplier[(n + 3 + d) % 8] * val
         origin.y = multiplier[(n + 1 + d) % 8] * val
 
@@ -68,17 +74,36 @@ def classify_input_vector(input_vector, prototypes, k):
     return check_neighborhood(neighborhood)
 
 
+def visualize(prototypes):
+    x, y = [], []
+    for point in prototypes["red"]:
+        x.append(point.x)
+        y.append(point.y)
+    plt.scatter(x, y)
+
+    x, y = [], []
+    for point in prototypes["blue"]:
+        x.append(point.x)
+        y.append(point.y)
+    plt.scatter(x, y)
+
+    plt.show()
+
+
 def main():
     k = 3
     prototypes = {"blue": create_spiral(Point(1, 1), 50), "red": create_spiral(Point(-1, -1), 50)}
 
-    for i in range(20):
-        # lazy learning
-        input_vector = random_prototype(prototypes)
-        category = classify_input_vector(input_vector, prototypes, k)
 
-        print("Category of Input Vector ({}, {}): {}".format(input_vector.x, input_vector.y, category))
+    # lazy learning
+    input_vector = random_prototype(prototypes)
+    category = classify_input_vector(input_vector, prototypes, k)
+
+    visualize(prototypes)
+    #print("Category of Input Vector ({}, {}): {}".format(input_vector.x, input_vector.y, category))
 
 
 if __name__ == '__main__':
     main()
+
+
