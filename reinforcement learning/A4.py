@@ -42,7 +42,7 @@ class GameGL(object):
 class BasicGame(GameGL):
 
     pixelSize = 30
-    speed = 0.3
+    speed = 0.9
     score = 0
     count = 0
     hits = 0
