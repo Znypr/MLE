@@ -1,22 +1,33 @@
 import math
 import random
-import copy
+from pandas import *
 
 import matplotlib.pyplot as plt
 import numpy as np
 from numpy import pi
 
 
+
 class Point(object):
-    x = 0.
-    y = 0.
+    x = 0.0
+    y = 0.0
 
     def __init__(self, x=0., y=0.):
         self.x, self.y = x, y
 
+def csv_to_dict(csv):
+    # reading CSV file
+    points = {"blue":[], "red":[]}
+    data = read_csv(csv, sep=";")
 
-def random_int(n):
-    return random.randrange(0, n)
+    for point in data:
+        if point.category < 0:
+            print(point["x"], point[1])
+            points["blue"].append((Point(point.x, point.y)))
+        else:
+            points["red"].append((Point(point.x, point.y)))
+
+    return points
 
 
 def random_prototype(prototypes):
@@ -75,24 +86,27 @@ def classify_input_vector(input_vector, prototypes, k):
 
 
 def visualize(prototypes):
-    x, y = [], []
-    for point in prototypes["red"]:
-        x.append(point.x)
-        y.append(point.y)
-    plt.scatter(x, y)
 
-    x, y = [], []
-    for point in prototypes["blue"]:
-        x.append(point.x)
-        y.append(point.y)
-    plt.scatter(x, y)
+    for i in prototypes:
+        x, y = [], []
+        for point in prototypes[i]:
+            x.append(point.x)
+            y.append(point.y)
+        plt.scatter(x, y)
+
+        x, y = [], []
+        for point in prototypes[i]:
+            x.append(point.x)
+            y.append(point.y)
+        plt.scatter(x, y)
 
     plt.show()
 
 
 def main():
     k = 3
-    prototypes = {"blue": create_spiral(0.3), "red": create_spiral()}
+    #prototypes = {"blue" : create_spiral(0.3), "red" : create_spiral()}
+    prototypes = csv_to_dict("spiral.txt")
     #visualize(prototypes)
 
     for i in range(10):
