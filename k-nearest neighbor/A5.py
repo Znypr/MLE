@@ -1,10 +1,9 @@
 import math
 import random
-from pandas import *
 
+import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
-from numpy import pi
 
 
 
@@ -12,20 +11,20 @@ class Point(object):
     x = 0.0
     y = 0.0
 
-    def __init__(self, x=0., y=0.):
+    def __init__(self, x=0.0, y=0.0):
         self.x, self.y = x, y
 
 def csv_to_dict(csv):
     # reading CSV file
     points = {"blue":[], "red":[]}
-    data = read_csv(csv, sep=";")
+    data = pd.read_csv(csv, sep=";", header=None)
 
-    for point in data:
-        if point.category < 0:
-            print(point["x"], point[1])
-            points["blue"].append((Point(point.x, point.y)))
+    for point in data.values:
+
+        if point[2] < 0:
+            points["blue"].append((Point(point[0], point[1])))
         else:
-            points["red"].append((Point(point.x, point.y)))
+            points["red"].append((Point(point[0], point[1])))
 
     return points
 
