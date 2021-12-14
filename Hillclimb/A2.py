@@ -4,12 +4,11 @@
 ## the path between cities is abbreviated as "p"
 ## the total distance of a path is abbreviated as "d"
 
-import random
-import numpy as np
 import copy
 import math
+import random
 
-
+import numpy as np
 
 TEMPERATURE = 100
 EPSILON = 0.01
@@ -20,7 +19,7 @@ def generateRandomProbability():
     return random.random()
 
 def generateRandomDistance():
-    return random.randrange(1, 1000)
+    return random.randrange(1, 100)
 
 def initiateMap(amountCities):
 
@@ -43,9 +42,6 @@ def createRandomPath(map):
     return shuffle(path)
 
 
-
-def exp(exponent):
-    return math.pow(math.e, exponent)
 
 def shuffle(path):
     np.random.shuffle(path)
@@ -86,11 +82,11 @@ def findOptimalPath(map):
         p2 = swapRandomNeighbors(p)
         d2 = calculateDistance(map, p2)
 
-        if d2 < d:
+        if d2 > d:
             p = p2
             d = d2
 
-        elif randomProbability > exp(-(d2-d)/TEMPERATURE):
+        elif randomProbability < math.exp((d2-d)/TEMPERATURE):
             p = p2
             d = d2
 
@@ -122,4 +118,4 @@ def findMinimum(map, reruns):
 
 if __name__ == '__main__':
     map = initiateMap(100)
-    findMinimum(map,100)
+    findMinimum(map, 100)

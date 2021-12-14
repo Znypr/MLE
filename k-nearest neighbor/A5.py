@@ -149,7 +149,8 @@ def run(prototypes, k, xMin, yMin, xMax, yMax, precision):
 
     return v_input
 
-def main(lazy=True, k=5, amount=50, runcount=10, xMin=-1, yMin=-1, xMax=1, yMax=1, precision=2):
+def main(lazy=True, k=3, amount=50, runcount=10, xMin=-1, yMin=-1,
+         xMax=1, yMax=1, precision=2):
 
     prototypes = csv_to_dict("spiral.txt")
 
@@ -173,7 +174,7 @@ if __name__ == '__main__':
     verify the classification manually.
     
     '''
-    main(lazy=False)
+    #main(lazy=False)
 
 
     ''' 
